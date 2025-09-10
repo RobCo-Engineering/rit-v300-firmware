@@ -1,6 +1,6 @@
 # RIT-V300 Firmware
 
-Firmware for the RIT-V300 series of smart terminal by RobCo Industries.
+Firmware for the RIT-V300 series of smart terminals by RobCo Industries.
 
 ## Target Hardware
 
@@ -47,4 +47,7 @@ A huge amount of knowledge was derived from this detailed breakdown of PAL video
 
 ### USB HID
 
-USB HID comes from the CH9350, most of the code used to parse that data was adapted from the Arduino library from https://github.com/joetrs/ESP32_CH9350_KEY
+USB HID comes from the CH9350. A lot of the information on how to parse it came from:
+
+- https://github.com/joetrs/ESP32_CH9350_KEY
+- https://programmersought.com/article/87184752869/
