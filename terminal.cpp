@@ -63,24 +63,16 @@ void terminal(void) {
   terminal_y = 0;
 
   // Monochrome colors
-  uint16_t default_fg                               = DEFAULT_FG; // white
-  uint16_t default_bg                               = DEFAULT_BG; // black
-
-  uint16_t col_fg                                   = default_fg;
-  uint16_t col_bg                                   = default_bg;
+  uint16_t col_fg                                   = DEFAULT_FG;
+  uint16_t col_bg                                   = DEFAULT_BG;
 
   enum { STATE_NORMAL, STATE_ESC, STATE_CSI } state = STATE_NORMAL;
   char ansi_buf[8];
   int  ansi_len = 0;
 
   while (true) {
-    gpio_put(PICO_DEFAULT_LED_PIN, 0);
     char c = uart_getc(uart1); // Blocking read
     uart_putc(uart1, c);       // echo
-    gpio_put(PICO_DEFAULT_LED_PIN, 1);
-
-    // TODO: Need to find a way to thread this so it's only blocking this
-    // thread, we still need to handle user input and render the prompt etc.
 
     switch (state) {
     case STATE_NORMAL:
@@ -129,8 +121,8 @@ void terminal(void) {
             int code = atoi(p);
             switch (code) {
             case 0: // Reset
-              col_fg = default_fg;
-              col_bg = default_bg;
+              col_fg = DEFAULT_FG;
+              col_bg = DEFAULT_BG;
               break;
             case 7: // Reverse video
             {
