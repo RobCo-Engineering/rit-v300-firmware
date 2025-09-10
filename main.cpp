@@ -18,7 +18,7 @@
 #include "graphics.h"
 #include "terminal.h"
 
-#include "CH9350_USBKEY.h"
+#include "keyboard.h"
 #include "main.h"
 
 #include "vt_logo.c"
@@ -54,10 +54,7 @@ void splash(const char *extra) {
   draw_bitmap((380 - vt_logo_w) / 2, 70, vt_logo_w, vt_logo_h, vt_logo_bitmap, 0);
 }
 
-int           KeyType;
-unsigned long StartTime;
-
-void          main2() {
+void main2() {
   printf("SETTING UP HID...\n");
 
   gpio_init(USBH_DPLUS);
@@ -68,57 +65,13 @@ void          main2() {
 
   uart_init(uart0, 115200);
 
-  Stream           stream(uart0);
+  irq_set_exclusive_handler(UART0_IRQ, ch9350_irq_handler);
+  irq_set_enabled(UART0_IRQ, true);
+  uart_set_irq_enables(uart0, true, false);
 
-  USB9350_KeyMouse USBKeyMouse;
-  USBKeyMouse.begin(stream);
-
-  KeyType   = 0; // ASCII-CODE
-  StartTime = 0;
-
-  printf("HID STREAM STARTING...\n");
   while (true) {
-    int      key;
-    uint16_t rawkey;
-    char     keyasc = '*';
-
-    if (KeyType == 0) {
-      key = USBKeyMouse.GetKey();
-      if (key > 0) {
-        if ((key >= 0x20) and (key <= 0x7e)) keyasc = (char)key;
-        // printf("Key 0x%02X '%c' pressed\n", key, keyasc);
-        uart_putc(uart1, keyasc);
-        if (key == 0x20) KeyType = 1; // Space toggle ASCII/OE-CODE to RAW
-        StartTime = to_ms_since_boot(get_absolute_time());
-      } else if (StartTime > 0) {
-        key = USBKeyMouse.KeyPressed();
-        if (key == 0x00) {
-          // printf("Key released after %ldms\n", to_ms_since_boot(get_absolute_time()) - StartTime);
-          StartTime = 0;
-        }
-      }
-    } else {
-      rawkey = USBKeyMouse.GetKeyRaw();
-      if (rawkey > 0) {
-        // printf("RawKey: 0x%02X / Modifier: 0x%02X pressed\n", rawkey & 0xFF, rawkey >> 8);
-        if (rawkey == 0x2C) KeyType = 0; // Space toggle ASCII/OE-CODE to RAW
-        StartTime = to_ms_since_boot(get_absolute_time());
-      } else if (StartTime > 0) {
-        rawkey = USBKeyMouse.KeyPressedRaw();
-        if (rawkey == 0x00) {
-          // printf("Key released after %ldms\n", to_ms_since_boot(get_absolute_time()) - StartTime);
-          StartTime = 0;
-        }
-      }
-    }
   }
 }
-
-// void screen_out_chars(const char *buf, int length) {
-//   for (int i = 0; i < length; i++) {
-//     screen_draw_char(buf[i]); // your own function
-//   }
-// }
 
 // The main loop
 int main() {
