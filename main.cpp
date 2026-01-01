@@ -14,6 +14,7 @@
 #include <hardware/uart.h>
 
 #include "cvideo.h"
+#include "cvideo_test.c"
 #include "fonts.h"
 #include "graphics.h"
 #include "terminal.h"
@@ -51,7 +52,7 @@ void splash(const char *extra) {
   print_string((width / 2) - ((strlen(rob) * active_font->char_width) / 2), 180, rob, DEFAULT_BG, DEFAULT_FG);
   print_string((width / 2) - ((strlen(extra) * active_font->char_width) / 2), 200, extra, DEFAULT_BG, DEFAULT_FG);
 
-  draw_bitmap((380 - vt_logo_w) / 2, 70, vt_logo_w, vt_logo_h, vt_logo_bitmap, 0);
+  draw_bitmap(60, 87, vt_logo_w, vt_logo_h, vt_logo_bitmap, 0);
 }
 
 void main2() {
@@ -70,6 +71,7 @@ void main2() {
   uart_set_irq_enables(uart0, true, false);
 
   while (true) {
+    tight_loop_contents();
   }
 }
 
@@ -92,9 +94,7 @@ int main() {
   printf("\n================\nROBCO INDUSTRIES\nRIT-V300\n================\n");
 
   printf("INITIALIZING VIDEO...\n");
-  initialise_cvideo(); // Initialise the composite video stuff
-  printf("SETTING VIDEO MODE...\n");
-  set_mode(4);              // Set video mode to 390 x 240
+  initialise_cvideo();      // Initialise the composite video stuff
   splash("System booting"); // Display a splash screen
 
   // USB host power

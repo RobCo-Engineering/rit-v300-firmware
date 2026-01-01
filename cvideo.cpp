@@ -28,6 +28,7 @@
 #include "memory.h"
 #include "pico/stdlib.h"
 
+#include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 #include "hardware/pio.h"
@@ -50,11 +51,8 @@ uint           vblank_count; // Vblank counter
 
 unsigned char *bitmap; // Bitmap buffer
 
-// int            width  = 256; // Bitmap dimensions
-// int            height = 192;
-
-int width  = 256; // Bitmap dimensions
-int height = 240;
+int            width  = 320; // Bitmap dimensions
+int            height = 240;
 
 /*
  * The sync tables consist of 32 entries, each one corresponding to a 2us slice
@@ -66,35 +64,30 @@ int height = 240;
  */
 
 // Horizontal sync with gap for pixel data
-//
 unsigned short hsync[32] = {
-    HSLO, HSLO, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, BORD,
+    HSLO, HSLO, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, HSLO,
 };
 
 // Horizontal sync for top and bottom borders
-//
 unsigned short border[32] = {
     HSLO, HSLO, HSHI, HSHI, HSHI, HSHI, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD,
     BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD,
 };
 
 // Vertical sync (long/long)
-//
 unsigned short vsync_ll[32] = {
     VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSHI, // Long sync pulse
     VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSHI, // Long sync pulse
 };
 
 // Vertical sync (short/short)
-//
 unsigned short vsync_ss[32] = {
     VSLO, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, // Short sync pulse
     VSLO, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, // Short sync pulse
 };
 
 // Vertical sync (long/short)
-//
 unsigned short vsync_ls[32] = {
     VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSLO, VSHI, // Long sync pulse
     VSLO, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, // Short sync pulse
@@ -108,7 +101,6 @@ int initialise_cvideo(void) {
   pio_1 = pio1; // Assign the PIO
 
   // Load up the PIO programs
-  //
   offset_0 = pio_add_program(pio_1, &cvideo_sync_program);
   offset_1 = pio_add_program(pio_1, &cvideo_data_program);
 
@@ -128,7 +120,6 @@ int initialise_cvideo(void) {
   vblank_count = 0; // And the vblank counter
 
   // Initialise the first PIO (video sync)
-  //
   pio_sm_set_enabled(pio_1, sm_sync, false); // Disable the PIO state machine
   pio_sm_clear_fifos(pio_1, sm_sync);        // Clear the PIO FIFO buffers
   cvideo_sync_initialise_pio(                // Initialise the PIO (function in cvideo.pio)
@@ -153,11 +144,9 @@ int initialise_cvideo(void) {
   bitmap = new unsigned char[width * height]; // Allocate the bitmap memory
 
   // Initialise the second PIO (pixel data)
-  //
-  cvideo_data_initialise_pio(pio_1, sm_data, offset_1, gpio_base, gpio_count, piofreq_1_256);
+  cvideo_data_initialise_pio(pio_1, sm_data, offset_1, gpio_base, gpio_count, piofreq_1);
 
   // Initialise the DMA
-  //
   cvideo_configure_pio_dma(pio_1, sm_data,
                            dma_channel_1, // On DMA channel 1
                            DMA_SIZE_8,    // Size of each transfer
@@ -178,65 +167,14 @@ int initialise_cvideo(void) {
   cls(0);        // Clear the screen
 
   // Start the PIO state machines
-  //
   pio_enable_sm_mask_in_sync(pio_1, (1u << sm_data) | (1u << sm_sync));
 
   printf("VIDEO STARTUP COMPLETE\n");
   return 0;
 }
 
-// Set the graphics mode
-// mode - The graphics mode (0 = 256x240, 1 = 320x240, 2 = 640x240, 3 = 420x240,
-// 4 = 390x240)
-int set_mode(int mode) {
-  double dfreq;
-
-  wait_vblank();
-
-  switch (mode) { // Get the video mode
-  case 1:
-    width = 320;           // Set screen width and
-    dfreq = piofreq_1_320; // pixel dot frequency accordingly
-    break;
-  case 2:
-    width = 640;
-    dfreq = piofreq_1_640;
-    break;
-  case 3:
-    width = 440;
-    dfreq = piofreq_1_420;
-    break;
-  case 4:
-    width = 392;
-    dfreq = piofreq_1_392;
-    break;
-  default:
-    width = 256;
-    dfreq = piofreq_1_256;
-    break;
-  }
-
-  if (bitmap != NULL) {
-    free(bitmap);
-  }
-  bitmap = new unsigned char[width * height]; // Allocate the bitmap memory
-
-  cvideo_configure_pio_dma( // Reconfigure the DMA
-      pio_1, sm_data,
-      dma_channel_1, // On DMA channel 1
-      DMA_SIZE_8,    // Size of each transfer
-      width,         // The bitmap width
-      NULL           // But there is no DMA interrupt for the pixel data
-  );
-
-  pio_1->sm[sm_data].clkdiv = (uint32_t)(dfreq * (1 << 16));
-
-  return 0;
-}
-
 // Set the border colour
 // - colour: Border colour
-//
 void set_border(unsigned char colour) {
   if (colour > colour_max) {
     return;
@@ -252,7 +190,6 @@ void set_border(unsigned char colour) {
 }
 
 // Wait for vblank
-//
 void wait_vblank(void) {
   uint c = vblank_count;      // Get the current vblank count
   while (c == vblank_count) { // Wait until it changes
@@ -263,7 +200,6 @@ void wait_vblank(void) {
 // The PIO interrupt handler
 // This sets up the DMA for cvideo_data with pixel data and is triggered by the
 // irq set 0 instruction at the end of the PIO
-//
 void cvideo_pio_handler(void) {
   if (bline >= height) {
     bline = 0;
@@ -276,18 +212,15 @@ void cvideo_pio_handler(void) {
 // The DMA interrupt handler
 // This feeds the state machine cvideo_sync with data for the PAL(ish) video
 // signal
-//
 void cvideo_dma_handler(void) {
 
   // Switch condition on the vertical scanline number (vline)
   // Each statement does a dma_channel_set_read_addr to point the PIO to the
   // next data to output
-  //
   switch (vline) {
 
   // First deal with the vertical sync scanlines
   // Also on scanline 3, preload the first pixel buffer scanline
-  //
   case 1 ... 2:
     dma_channel_set_read_addr(dma_channel_0, vsync_ll, true);
     break;
@@ -309,14 +242,12 @@ void cvideo_dma_handler(void) {
     break;
   // Now point the dma at the first buffer for the pixel data,
   // and preload the data for the next scanline
-  //
   default:
     dma_channel_set_read_addr(dma_channel_0, hsync, true);
     break;
   }
 
   // Increment and wrap the counters
-  //
   if (vline++ >= 312) { // If we've gone past the bottom scanline then
     vline = 1;          // Reset the scanline counter
     vblank_count++;
@@ -324,7 +255,6 @@ void cvideo_dma_handler(void) {
 
   // Finally, clear the interrupt request ready for the next horizontal sync
   // interrupt
-  //
   dma_hw->ints0 = 1u << dma_channel_0;
 }
 
@@ -337,7 +267,6 @@ void cvideo_dma_handler(void) {
 // DMA_SIZE_32)
 // - buffer_size_words: Number of bytes to transfer
 // - handler: Address of the interrupt handler, or NULL for no interrupts
-//
 void cvideo_configure_pio_dma(PIO pio, uint sm, uint dma_channel, dma_channel_transfer_size transfer_size, size_t buffer_size,
                               irq_handler_t handler) {
   dma_channel_config c = dma_channel_get_default_config(dma_channel);
