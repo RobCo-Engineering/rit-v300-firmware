@@ -49,6 +49,6 @@ void cvideo_data_initialise_pio(PIO pio, uint sm, uint offset, uint pin_base, ui
     sm_config_set_in_pins(&c, pin_base);
     sm_config_set_out_shift(&c, false, true, 8);
     pio_sm_init(pio, sm, offset, &c);
-    pio->sm[sm].clkdiv = (uint32_t) (freq * (1 << 16));
+    pio->sm[sm].clkdiv = (uint32_t) (freq * 65536.0f);
 }
 %}

@@ -1,8 +1,8 @@
 #pragma once
 
 // Clock frequency of state machine for PIO handling sync
-#define piofreq_0 6.25f
-#define piofreq_1 6.785f
+#define piofreq_0 6.25f // Needs to remain this for 64us hsync based on 125MHz system clock
+#define piofreq_1 4.56f // pixel data
 
 #define sm_sync   0 // State machine number in the PIO for the sync data
 #define sm_data   1 // State machine number in the PIO for the pixel data
@@ -31,6 +31,6 @@ void cvideo_configure_pio_dma(PIO pio, uint sm, uint dma_channel, dma_channel_tr
 
 void cvideo_pio_handler(void);
 void cvideo_dma_handler(void);
-
+void shift_clkdiv_fixed(int32_t delta_fp);
 void wait_vblank(void);
 void set_border(unsigned char colour);

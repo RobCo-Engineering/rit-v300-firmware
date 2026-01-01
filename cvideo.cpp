@@ -51,8 +51,8 @@ uint           vblank_count; // Vblank counter
 
 unsigned char *bitmap; // Bitmap buffer
 
-int            width  = 320; // Bitmap dimensions
-int            height = 240;
+int            width  = 480; // Bitmap dimensions
+int            height = 260;
 
 /*
  * The sync tables consist of 32 entries, each one corresponding to a 2us slice
@@ -65,8 +65,8 @@ int            height = 240;
 
 // Horizontal sync with gap for pixel data
 unsigned short hsync[32] = {
-    HSLO, HSLO, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, HSLO,
+    BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, BORD, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, BORD,
 };
 
 // Horizontal sync for top and bottom borders
@@ -93,6 +93,18 @@ unsigned short vsync_ls[32] = {
     VSLO, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, VSHI, // Short sync pulse
 };
 
+void shift_clkdiv_fixed(int32_t delta_fp) {
+    uint32_t clkdiv = pio_1->sm[sm_data].clkdiv;
+    int32_t new_clkdiv = (int32_t)clkdiv + delta_fp;
+
+    // Clamp to minimum 1.0 (65536)
+    if (new_clkdiv < 65536) new_clkdiv = 65536;
+
+    pio_1->sm[sm_data].clkdiv = (uint32_t)new_clkdiv;
+
+    printf("New clkdiv (FP): %u, as float: %.6f\n",
+           new_clkdiv, new_clkdiv / 65536.0f);
+}
 /*
  * The main routine sets up the whole shebang
  */
@@ -231,8 +243,8 @@ void cvideo_dma_handler(void) {
     dma_channel_set_read_addr(dma_channel_0, vsync_ss, true);
     break;
   // Then the border scanlines
-  case 6 ... 44:
-  case 285 ... 309:
+  case 6 ... 35:
+  case 296 ... 309:
     // This is just gonna be the top and bottom borders I think
     dma_channel_set_read_addr(dma_channel_0, border, true);
     break;
