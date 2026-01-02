@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define font_line_spacing 1
+#define font_line_spacing 0
 
 // Define the BitmapFont structure
 typedef struct {

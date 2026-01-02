@@ -52,7 +52,9 @@ uint           vblank_count; // Vblank counter
 unsigned char *bitmap; // Bitmap buffer
 
 int            width  = 480; // Bitmap dimensions
-int            height = 260;
+int            height = 264; // It's set to be divisible by the font height so we have the correct number of lines
+
+// 24 rows 59 chars wide @ 8x11 font
 
 /*
  * The sync tables consist of 32 entries, each one corresponding to a 2us slice
@@ -243,8 +245,8 @@ void cvideo_dma_handler(void) {
     dma_channel_set_read_addr(dma_channel_0, vsync_ss, true);
     break;
   // Then the border scanlines
-  case 6 ... 35:
-  case 296 ... 309:
+  case 6 ... 33:
+  case 298 ... 309:
     // This is just gonna be the top and bottom borders I think
     dma_channel_set_read_addr(dma_channel_0, border, true);
     break;

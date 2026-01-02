@@ -36,7 +36,7 @@ void cls(unsigned char c) {
 // - rows: Number of pixel rows to scroll up by
 //
 void scroll_up(unsigned char c, int rows) {
-  memcpy(bitmap, &bitmap[width * rows], (height - rows) * width);
+  memcpy(bitmap, &bitmap[width * rows], (height - rows) * width); // Fill the bottom rows with the background colour
   memset(&bitmap[width * (height - rows)], colour_base + c, rows * width);
 }
 
