@@ -15,8 +15,11 @@ img = Image.open(infile).convert("L")  # grayscale
 w, h = img.size
 
 # Scale to compensate non square pixels
-scale_x = 1.5
-scale_y = 1.0
+# scale_x = 1.5
+# scale_y = 1.0
+
+scale_x = 1.0
+scale_y = 0.723
 
 new_w = int(w * scale_x)
 new_h = int(h * scale_y)

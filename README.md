@@ -6,13 +6,19 @@ Firmware for the RIT-V300 series of smart terminals by RobCo Industries.
 
 This firmware was built and tested on the RP2350, specifically the Adafruit Metro.
 
+Keyboard input is over UART from a CH9350 module.
+
+## Building
+
+Uses VScode build/debug tasks.
+
+### Flashing
+
 ## Fonts
 
-Fonts were obtained from https://github.com/viler-int10h/vga-text-mode-fonts
+Fonts were obtained from https://github.com/viler-int10h/vga-text-mode-fonts and then converted from raw binary into C structs with:
 
-Converted from raw binary into C structs with
-
-```
+```sh
 xxd -i SOME_FONT.F14 > some_font.c
 ```
 
@@ -34,8 +40,6 @@ for i in {40..47}; do
 done
 ```
 
-## Images
-
 ## Credits
 
 ### Video
@@ -49,5 +53,10 @@ A huge amount of knowledge was derived from this detailed breakdown of PAL video
 
 USB HID comes from the CH9350. A lot of the information on how to parse it came from:
 
+- https://www.wch-ic.com/downloads/CH9350DS_PDF.html
 - https://github.com/joetrs/ESP32_CH9350_KEY
 - https://programmersought.com/article/87184752869/
+
+### Fonts
+
+Fonts from the excellent project at https://int10h.org/oldschool-pc-fonts
