@@ -31,7 +31,7 @@ pico_sdk_init()
 set(GIT_DIR_LOOKUP_POLICY ALLOW_LOOKING_ABOVE_CMAKE_SOURCE_DIR)
 add_subdirectory(etl)
 
-add_executable(rit-v300 main.cpp cvideo.cpp graphics.cpp fonts.cpp terminal.cpp keyboard.cpp)
+add_executable(rit-v300 main.cpp cvideo.cpp graphics.cpp fonts.cpp terminal.cpp keyboard.cpp commands.cpp)
 
 add_definitions(-DPICO_DEFAULT_UART=1
     -DPICO_DEFAULT_UART_TX_PIN=8

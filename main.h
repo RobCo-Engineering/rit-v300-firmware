@@ -5,7 +5,6 @@
 #define col_white 0x0F
 
 void splash(char *extra);
-void terminal_app(void);
 int  main(void);
 
 // USB host power enable pin

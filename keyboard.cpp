@@ -1,7 +1,9 @@
 #include <cstdio>
 #include <iostream>
 
+#include "commands.h"
 #include "etl/array.h"
+#include "etl/string.h"
 #include "etl/vector.h"
 #include "hardware/uart.h"
 #include "keyboard.h"
@@ -39,10 +41,15 @@ void handle_frame(Cmd cmd, const etl::vector<uint8_t, 16> &payload) {
     // Is key new? (not found in previous report)
     auto it = etl::find(prev_report.begin() + 2, prev_report.end(), key);
     if (it == prev_report.end()) {
-      char ascii = hid_usage_to_ascii(key, payload[0]);
-      if (ascii) {
-        // printf("KeyDown: %c\n", ascii);
-        uart_putc(uart1, ascii);
+      if (key == 0x28) { // Enter
+        handle_char('\n');
+      } else if (key == 0x2A) { // Backspace
+        handle_char('\b');
+      } else {
+        char ascii = hid_usage_to_ascii(key, payload[0]);
+        if (ascii) {
+          handle_char(ascii);
+        }
       }
     }
   }
