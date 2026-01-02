@@ -83,7 +83,7 @@ int main() {
   cls(DEFAULT_BG);    // Clear the screen
 
   printf("\n\nInitializing Robco Industries(TM) MF Boot Agent v2.3.0\nRETROS BIOS\nRBIOS-4.02.08.00 52EE5.E7.E8\nCopyright 2201-2203 Robco "
-         "Ind.\nUppermem: 64 KB\nRoot (5A8)\n\n");
+         "Ind.\nUppermem: 520 KB\nRoot (5A8)\n\n");
 
   sleep_ms(2000); // Pause for dramatic effect
 
@@ -103,7 +103,7 @@ int main() {
   // Launch USB management on core1
   sleep_ms(1000); // Even more pausing for dramatic effect
   multicore_launch_core1(main2);
-  printf("READY.\n> "); // Prompt
+  printf("\nREADY.\n> "); // Prompt
 
   while (true) {
     terminal_uart_task();
