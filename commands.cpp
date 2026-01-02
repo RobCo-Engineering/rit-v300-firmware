@@ -4,7 +4,7 @@
 
 etl::string<CMDLINE_MAX> cmdline;
 
-// Command function declarations
+// Command function declarations, note that the commands are suppose to look like a DEC VMS command line
 constexpr Command command_table[] = {
     {"RUN", cmd_run},
     {"SET", cmd_set},
@@ -60,6 +60,10 @@ void execute_command(etl::string<CMDLINE_MAX> &line) {
 
   for (auto &cmd : command_table) {
     if (strcmp(t.argv[0], cmd.name) == 0) {
+
+      // Start in another thread or core? Need to find a way to still accept input so user can abort
+      // need to really just accept Ctrl-C or similar to abort long running commands, I don't know if
+      // that should be done here or in the command implementations
       cmd.fn(t);
       return;
     }
