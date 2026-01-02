@@ -24,6 +24,8 @@
 
 #include "vt_logo.c"
 
+#include "uart_cmds.c"
+
 /*
 void dump_dma_claims(void) {
   for (int i = 0; i < NUM_DMA_CHANNELS; ++i) {
@@ -52,7 +54,7 @@ void splash(const char *extra) {
   print_string((width / 2) - ((strlen(rob) * active_font->char_width) / 2), 180, rob, DEFAULT_BG, DEFAULT_FG);
   print_string((width / 2) - ((strlen(extra) * active_font->char_width) / 2), 200, extra, DEFAULT_BG, DEFAULT_FG);
 
-  draw_bitmap(60, 87, vt_logo_w, vt_logo_h, vt_logo_bitmap, 0);
+  draw_bitmap(65, 90, vt_logo_w, vt_logo_h, vt_logo_bitmap, 0);
 }
 
 void main2() {
@@ -121,8 +123,12 @@ int main() {
   // Mysterious 3 second pause so things don't appear so fast
   sleep_ms(1000 * 3);
 
+  // indian_head_test();
+
   while (true) {
+    // tight_loop_contents();
     terminal_app();
+    // term_cmds();
   }
 }
 

@@ -33,7 +33,7 @@ void initialise_terminal(void) {
 
 // Handle carriage returns
 void cr(void) {
-  terminal_x = 0;
+  terminal_x = LEFT_MARGIN;
   terminal_y += active_font->char_height + font_line_spacing;
   if (terminal_y >= height) {
     terminal_y -= active_font->char_height + font_line_spacing;
@@ -53,13 +53,13 @@ void fs(void) {
 void bs(void) {
   terminal_x -= active_font->char_width;
   if (terminal_x < 0) {
-    terminal_x = 0;
+    terminal_x = LEFT_MARGIN;
   }
 }
 
 // The terminal loop
 void terminal(void) {
-  terminal_x = 0;
+  terminal_x = LEFT_MARGIN;
   terminal_y = 0;
 
   // Monochrome colors
