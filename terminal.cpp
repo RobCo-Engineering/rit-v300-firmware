@@ -1,13 +1,7 @@
-//
-// Title:	        Pico-mposite Terminal Emulation
-// Description:		Simple terminal emulation
-// Author:	        Dean Belfield
-// Created:	        19/02/2022
-// Last Updated:	03/03/2022
-//
-// Modinfo:
-// 03/03/2022:      Added colour
 #include <stdlib.h>
+
+#include "pico/stdio.h"
+#include "pico/stdio/driver.h"
 
 #include "pico/stdlib.h"
 
@@ -22,182 +16,178 @@
 #include "main.h"
 #include "terminal.h"
 
-int  terminal_x;
-int  terminal_y;
+typedef enum { STATE_NORMAL, STATE_ESC, STATE_CSI } terminal_parse_state_t;
 
-void initialise_terminal(void) {
+typedef struct {
+  int                    terminal_x;
+  int                    terminal_y;
+
+  uint16_t               col_fg;
+  uint16_t               col_bg;
+
+  terminal_parse_state_t state;
+  char                   ansi_buf[8];
+  int                    ansi_len;
+} terminal_state_t;
+
+static terminal_state_t term;
+
+void                    initialise_terminal(void) {
   uart_init(uart1, UART_SPEED);
   gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART); // RX
   gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART); // TX
 }
 
-// Handle carriage returns
-void cr(void) {
-  terminal_x = LEFT_MARGIN;
-  terminal_y += active_font->char_height + font_line_spacing;
-  if (terminal_y >= height) {
-    terminal_y -= active_font->char_height + font_line_spacing;
-    scroll_up(DEFAULT_BG, (active_font->char_height + font_line_spacing));
+/* ---------- cursor helpers (unchanged logic) ---------- */
+
+static void cr(void) {
+  term.terminal_x = LEFT_MARGIN;
+  term.terminal_y += active_font->char_height + font_line_spacing;
+
+  if (term.terminal_y >= height) {
+    term.terminal_y -= active_font->char_height + font_line_spacing;
+    scroll_up(DEFAULT_BG, active_font->char_height + font_line_spacing);
   }
 }
 
-// Advance one character position
-void fs(void) {
-  terminal_x += active_font->char_width;
-  if (terminal_x >= width) {
+static void fs(void) {
+  term.terminal_x += active_font->char_width;
+  if (term.terminal_x >= width) {
     cr();
   }
 }
 
-// Backspace
-void bs(void) {
-  terminal_x -= active_font->char_width;
-  if (terminal_x < 0) {
-    terminal_x = LEFT_MARGIN;
+static void bs(void) {
+  term.terminal_x -= active_font->char_width;
+  if (term.terminal_x < LEFT_MARGIN) {
+    term.terminal_x = LEFT_MARGIN;
   }
 }
 
-// The terminal loop
-void terminal(void) {
-  terminal_x = LEFT_MARGIN;
-  terminal_y = 0;
+/* ---------- ANSI / character consumer ---------- */
 
-  // Monochrome colors
-  uint16_t col_fg                                   = DEFAULT_FG;
-  uint16_t col_bg                                   = DEFAULT_BG;
+static void terminal_putc(char c) {
+  switch (term.state) {
 
-  enum { STATE_NORMAL, STATE_ESC, STATE_CSI } state = STATE_NORMAL;
-  char ansi_buf[8];
-  int  ansi_len = 0;
+  case STATE_NORMAL:
+    if (c == 0x1B) {
+      term.state = STATE_ESC;
+    } else if (c >= 32) {
+      print_char(term.terminal_x, term.terminal_y, c, term.col_bg, term.col_fg);
+      fs();
+    } else {
+      switch (c) {
+      case '\b':
+        bs();
+        break;
+#if PICO_STDIO_ENABLE_CRLF_SUPPORT
+      case '\r':
+        cr();
+        break;
+      case '\n':
+        break;
+#else
+      case '\r':
+      case '\n':
+        cr();
+        break;
+#endif
 
-  while (true) {
-    char c = uart_getc(uart1); // Blocking read
-    uart_putc(uart1, c);       // echo
-
-    switch (state) {
-    case STATE_NORMAL:
-      if (c == 0x1B) {
-        state = STATE_ESC;
-      } else if (c >= 32) {
-        print_char(terminal_x, terminal_y, c, col_bg, col_fg);
-        fs();
-      } else {
-        switch (c) {
-        case 0x08:
-          bs();
-          break;
-        case 0x0D:
-          cr();
-          break;
-        case 0x03:
-          return;
-        default:
-          break;
-        }
+      default:
+        break;
       }
-      break;
-
-    case STATE_ESC:
-      if (c == '[') {
-        state    = STATE_CSI;
-        ansi_len = 0;
-      } else {
-        state = STATE_NORMAL;
-      }
-      break;
-
-    case STATE_CSI:
-      if ((c >= '0' && c <= '9') || c == ';') {
-        if (ansi_len < sizeof(ansi_buf) - 1) {
-          ansi_buf[ansi_len++] = c;
-        }
-      } else {
-        ansi_buf[ansi_len] = '\0';
-
-        if (c == 'm') {
-          // Simple SGR code parsing (only one at a time for now)
-          char *p = ansi_buf;
-          while (*p) {
-            int code = atoi(p);
-            switch (code) {
-            case 0: // Reset
-              col_fg = DEFAULT_FG;
-              col_bg = DEFAULT_BG;
-              break;
-            case 7: // Reverse video
-            {
-              uint16_t tmp = col_fg;
-              col_fg       = col_bg;
-              col_bg       = tmp;
-            } break;
-            case 1: // Bold → light gray
-              col_fg = GRAY16(12);
-              break;
-            case 2: // Dim → dark gray
-              col_fg = GRAY16(4);
-              break;
-            // Optional: ANSI 30–37 foreground greyscale
-            case 30:
-              col_fg = GRAY16(0);
-              break;
-            case 31:
-              col_fg = GRAY16(2);
-              break;
-            case 32:
-              col_fg = GRAY16(4);
-              break;
-            case 33:
-              col_fg = GRAY16(6);
-              break;
-            case 34:
-              col_fg = GRAY16(8);
-              break;
-            case 35:
-              col_fg = GRAY16(10);
-              break;
-            case 36:
-              col_fg = GRAY16(12);
-              break;
-            case 37:
-              col_fg = GRAY16(15);
-              break;
-            // Optional: ANSI 40–47 background greyscale
-            case 40:
-              col_bg = GRAY16(0);
-              break;
-            case 41:
-              col_bg = GRAY16(2);
-              break;
-            case 42:
-              col_bg = GRAY16(4);
-              break;
-            case 43:
-              col_bg = GRAY16(6);
-              break;
-            case 44:
-              col_bg = GRAY16(8);
-              break;
-            case 45:
-              col_bg = GRAY16(10);
-              break;
-            case 46:
-              col_bg = GRAY16(12);
-              break;
-            case 47:
-              col_bg = GRAY16(15);
-              break;
-            }
-
-            // Skip to next
-            while (*p && *p != ';')
-              p++;
-            if (*p == ';') p++;
-          }
-        }
-
-        state = STATE_NORMAL;
-      }
-      break;
     }
+    break;
+
+  case STATE_ESC:
+    if (c == '[') {
+      term.state    = STATE_CSI;
+      term.ansi_len = 0;
+    } else {
+      term.state = STATE_NORMAL;
+    }
+    break;
+
+  case STATE_CSI:
+    if ((c >= '0' && c <= '9') || c == ';') {
+      if (term.ansi_len < (int)sizeof(term.ansi_buf) - 1) {
+        term.ansi_buf[term.ansi_len++] = c;
+      }
+    } else {
+      term.ansi_buf[term.ansi_len] = '\0';
+
+      if (c == 'm') {
+        char *p = term.ansi_buf;
+        while (*p) {
+          int code = atoi(p);
+
+          switch (code) {
+          case 0:
+            term.col_fg = DEFAULT_FG;
+            term.col_bg = DEFAULT_BG;
+            break;
+          case 7: {
+            uint16_t t  = term.col_fg;
+            term.col_fg = term.col_bg;
+            term.col_bg = t;
+          } break;
+          case 1:
+            term.col_fg = GRAY16(12);
+            break;
+          case 2:
+            term.col_fg = GRAY16(4);
+            break;
+
+          case 30 ... 37:
+            term.col_fg = GRAY16((code - 30) * 2);
+            break;
+          case 40 ... 47:
+            term.col_bg = GRAY16((code - 40) * 2);
+            break;
+          }
+
+          while (*p && *p != ';')
+            p++;
+          if (*p == ';') p++;
+        }
+      }
+
+      term.state = STATE_NORMAL;
+    }
+    break;
+  }
+}
+
+/* ---------- stdio driver ---------- */
+
+static void terminal_out_chars(const char *buf, int len) {
+  for (int i = 0; i < len; i++) {
+    terminal_putc(buf[i]);
+  }
+}
+
+typedef struct stdio_driver stdio_driver_t;
+static stdio_driver         terminal_stdio_driver = {
+            .out_chars = terminal_out_chars,
+};
+
+/* ---------- public init ---------- */
+
+void stdio_terminal_init(void) {
+  term.terminal_x = LEFT_MARGIN;
+  term.terminal_y = 0;
+  term.col_fg     = DEFAULT_FG;
+  term.col_bg     = DEFAULT_BG;
+  term.state      = STATE_NORMAL;
+  term.ansi_len   = 0;
+
+  stdio_set_driver_enabled(&terminal_stdio_driver, true);
+  stdio_set_translate_crlf(&terminal_stdio_driver, true);
+}
+
+void terminal_uart_task(void) {
+  if (uart_is_readable(uart1)) {
+    char c = uart_getc(uart1);
+    terminal_putc(c);
   }
 }

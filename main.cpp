@@ -58,7 +58,7 @@ void splash(const char *extra) {
 }
 
 void main2() {
-  printf("SETTING UP HID...\n");
+  printf("Setting up HID......\n");
 
   gpio_init(USBH_DPLUS);
   gpio_init(USBH_DMINUS);
@@ -86,21 +86,23 @@ int main() {
   // bi_decl(bi_2pins_with_func(PICO_DEFAULT_UART_RX_PIN, PICO_DEFAULT_UART_TX_PIN, GPIO_FUNC_UART));
   bi_decl(bi_2pins_with_func(USBH_DPLUS, USBH_DMINUS, GPIO_FUNC_UART));
 
-  // stdio_driver_t screen_driver = {.out_chars = screen_out_chars, .in_chars = NULL, .crlf_enabled = NULL};
-
   stdio_init_all();
-
-  // TODO: Pipe to display also
-  // stdio_set_driver_enabled
-
-  printf("\n================\nROBCO INDUSTRIES\nRIT-V300\n================\n");
-
-  printf("INITIALIZING VIDEO...\n");
+  
+  printf("Initializing video...\n");
   initialise_cvideo();      // Initialise the composite video stuff
+  stdio_terminal_init(); // Initialise the terminal stdio driver
   splash("System booting"); // Display a splash screen
 
+  // Mysterious 3 second pause so things don't appear so fast
+  sleep_ms(1000 * 3);
+  cls(DEFAULT_BG);
+  
+  printf("\n\nInitializing Robco Industries(TM) MF Boot Agent v2.3.0\nRETROS BIOS\nRBIOS-4.02.08.00 52EE5.E7.E8\nCopyright 2201-2203 Robco Ind.\nUppermem: 64 KB\nRoot (5A8)\n\n");
+  
+  sleep_ms(2000);
+
   // USB host power
-  printf("ENABLING BUS POWER...\n");
+  printf("Enabling bus power...\n");
   gpio_init(USBH_POWER_EN);
   gpio_set_dir(USBH_POWER_EN, GPIO_OUT);
   gpio_put(USBH_POWER_EN, 1);
@@ -109,7 +111,8 @@ int main() {
   gpio_init(PICO_DEFAULT_LED_PIN);
   gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-  printf("INITIALIZING INTERFACE BUS...\n");
+  sleep_ms(500);
+  printf("Initializing interface bus...\n");
 
   // Launch USB management on core1
   multicore_launch_core1(main2);
@@ -120,14 +123,22 @@ int main() {
   // printf("DUMPING IRQ PRIORITIES...\n");
   // dump_irq_priorities();
 
-  // Mysterious 3 second pause so things don't appear so fast
-  sleep_ms(1000 * 3);
 
   // indian_head_test();
 
+  sleep_ms(1000);
+  printf("READY.\n> ");
+
+  sleep_ms(1000);
+  printf("RUN TERMLINK.F\n");
+  initialise_terminal(); // Initialise the UART
+
   while (true) {
     // tight_loop_contents();
-    terminal_app();
+    // terminal_app();
+  terminal_uart_task();
+    // printf("TEST...\n");
+    // sleep_ms(100);
     // term_cmds();
   }
 }
@@ -135,8 +146,8 @@ int main() {
 // Simple terminal output from UART
 //
 void terminal_app(void) {
-  printf("INITIALIZING TERMLINK...\n");
+  printf("RUN TERMLINK.F\n");
   initialise_terminal(); // Initialise the UART
   cls(DEFAULT_BG);       // Clear the screen
-  terminal();            // And do the terminal
+  // terminal();            // And do the terminal
 }

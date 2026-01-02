@@ -13,4 +13,5 @@
 #define LEFT_MARGIN 20
 
 void initialise_terminal(void);
-void terminal(void);
+void stdio_terminal_init(void);
+void terminal_uart_task(void);

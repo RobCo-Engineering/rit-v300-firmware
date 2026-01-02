@@ -19,6 +19,8 @@ set(PICO_BOARD adafruit_feather_rp2350 CACHE STRING "Board type")
 # for guidance on setting up the Pico C/C++ SDK.
 #
 
+add_compile_definitions(PICO_STDIO_DRIVER=1)
+add_compile_definitions(PICO_STDIO_ENABLE_CRLF_SUPPORT=1)
 cmake_minimum_required(VERSION 3.13)
 include(pico_sdk_import.cmake)
 project(rit-v300 C CXX ASM)
